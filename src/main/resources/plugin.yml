@@ -2,3 +2,50 @@ name: MobControl
 main: net.andrewcr.minecraft.plugin.MobControl.Plugin
 version: 1.0
 authors: [ andrewcr ]
+
+commands:
+  mobcontrol:
+    description: Commands to manage mobs
+    usage: |
+      use /help mobcontrol [subcommand] for more information
+      /mobcontrol set - Set properties regarding mobs
+      /mobcontrol allow - Allow mobs to spawn in a world
+      /mobcontrol deny - Disallow mobs from spawning in a world
+      /mobcontrol info - Show spawning rules for a world
+      /mobcontrol zap - Remove mobs
+  mobcontrol set:
+    description: Set properties regarding mobs
+    usage: |
+      /mobcontrol set [world] allowplayerspawn [true | false] - Allow entities spawned by players, regardless of rules
+      /mobcontrol set [world] rule [rule] ... - Set rules controlling spawns
+          Rule format: [+|-][mob name], e.g. -PIG_ZOMBIE.  Also supports groups: ALL, FRIENDLY, HOSTILE
+  mobcontrol allow:
+    description: Allow mobs to spawn in a world
+    usage: |
+      /mobcontrol allow [world] [mob] - Allow [mob] to spawn in world [world]
+  mobcontrol deny:
+    descripton: Disallow mobs from spawning in a world
+    usage: |
+      /mobcontrol deny [world] [mob] - Disallow [mob] from spawning in world [world]
+  mobcontrol info:
+    description: Show spawning rules for a world
+    usage: |
+      /mobcontrol info [world] - Show spawning rules for [world]
+  mobcontrol zap:
+    description: Removes mobs from a world
+    usage: |
+      /mobcontrol zap [mob] [radius | ALL] - Removes all mobs of specified type in the specified radius around the user
+
+permissions:
+  mobcontrol.configure:
+    description: Determines whether or not the player can set spawning rules
+    default: op
+  mobcontrol.info:
+    description: Determines whether or not the player can get info on spawn rules in a world
+    default: true
+  mobcontrol.zapradius:
+    description: Determines whether or not the player can remove mobs within a radius
+    default: op
+  mobcontrol.zapall:
+    description: Determines whether or not the player can remove all mobs of a specific type
+    default: op
