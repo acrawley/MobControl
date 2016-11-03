@@ -40,10 +40,15 @@ public class MobControlInfoCommand extends CommandBase {
             MobControlWorldConfig config = ConfigStore.getInstance().getWorldConfig(world.getName(), false);
             if (config == null) {
                 this.sendMessage("No spawn rules configured for world '" + world.getName() + "'!");
+                return true;
             }
 
             this.sendMessage("World '" + world.getName() + "' configuration:");
-            this.sendMessage("  Player-initiated spawns override rules: " + (config.isPlayerSpawnAllowed() ? "yes" : "no"));
+            if (config.getAlwaysAllowTypes().size() > 0) {
+                this.sendMessage("  Always allow spawns of type: " + config.getAlwaysAllowTypes().stream()
+                    .map(t -> t.name())
+                    .collect(Collectors.joining(", ")));
+            }
             this.sendMessage("  Spawn rule: " + config.getSpawnRule().getRuleText());
             this.sendMessage("  Allowed mobs: " + this.getMobs(config.getSpawnRule(), true));
             this.sendMessage("  Denied mobs: " + this.getMobs(config.getSpawnRule(), false));

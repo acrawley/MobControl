@@ -7,9 +7,10 @@ import net.andrewcr.minecraft.plugin.MobControl.model.rules.MobSpawnRule;
 import net.andrewcr.minecraft.plugin.MobControl.model.rules.RuleException;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
 import org.bukkit.configuration.serialization.SerializableAs;
+import org.bukkit.event.entity.CreatureSpawnEvent;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @SerializableAs("MobControlWorldConfig")
 public class MobControlWorldConfig implements ConfigurationSerializable {
@@ -18,7 +19,7 @@ public class MobControlWorldConfig implements ConfigurationSerializable {
     private final Object configLock = ConfigStore.getInstance().getSyncObj();
 
     @Getter
-    private boolean isPlayerSpawnAllowed;
+    private List<CreatureSpawnEvent.SpawnReason> alwaysAllowTypes;
     @Getter
     private MobSpawnRule spawnRule;
 
@@ -26,8 +27,13 @@ public class MobControlWorldConfig implements ConfigurationSerializable {
 
     //region Constructor
 
-    public MobControlWorldConfig(String spawnRule, boolean isPlayerSpawnAllowed) throws RuleException {
-        this.isPlayerSpawnAllowed = isPlayerSpawnAllowed;
+    public MobControlWorldConfig(String spawnRule, List<CreatureSpawnEvent.SpawnReason> alwaysAllowTypes) throws RuleException {
+        if (alwaysAllowTypes != null) {
+            this.alwaysAllowTypes = alwaysAllowTypes;
+        } else {
+            this.alwaysAllowTypes = new ArrayList<>();
+        }
+
         this.spawnRule = new MobSpawnRule(spawnRule);
     }
 
@@ -40,26 +46,36 @@ public class MobControlWorldConfig implements ConfigurationSerializable {
     public Map<String, Object> serialize() {
         Map<String, Object> map = new LinkedHashMap<>();
 
-        map.put("allowPlayerSpawn", this.isPlayerSpawnAllowed);
+        if (this.alwaysAllowTypes.size() > 0) {
+            map.put("alwaysAllow", this.alwaysAllowTypes.stream()
+                .map(t -> t.name())
+                .sorted()
+                .collect(Collectors.joining(", ")));
+        }
+
         map.put("rule", this.spawnRule.getRuleText());
 
         return map;
     }
 
     public static MobControlWorldConfig deserialize(Map<String, Object> data) {
-        Boolean allowPlayerSpawn = true;
         String spawnRule = null;
-
-        if (data.containsKey("allowPlayerSpawn")) {
-            allowPlayerSpawn = (Boolean) data.get("allowPlayerSpawn");
-        }
+        List<CreatureSpawnEvent.SpawnReason> alwaysAllowTypes = null;
 
         if (data.containsKey("rule")) {
             spawnRule = (String) data.get("rule");
         }
 
+        if (data.containsKey("alwaysAllow")) {
+            String alwaysAllowRaw = (String) data.get("alwaysAllow");
+            alwaysAllowTypes = Arrays.stream(alwaysAllowRaw.split(","))
+                .map(type -> MobControlWorldConfig.getSpawnReason(type.trim()))
+                .filter(r -> r != null)
+                .collect(Collectors.toList());
+        }
+
         try {
-            return new MobControlWorldConfig(spawnRule, allowPlayerSpawn);
+            return new MobControlWorldConfig(spawnRule, alwaysAllowTypes);
         } catch (RuleException ex) {
             Plugin.getInstance().getLogger().severe("Failed to parse spawn rule '" + spawnRule + "'!");
             Plugin.getInstance().getLogger().severe("    Error: " + ex.getMessage());
@@ -70,9 +86,28 @@ public class MobControlWorldConfig implements ConfigurationSerializable {
 
     //endregion
 
+    private static CreatureSpawnEvent.SpawnReason getSpawnReason(String spawnReason) {
+        return Arrays.stream(CreatureSpawnEvent.SpawnReason.values())
+            .filter(e -> e.name().equalsIgnoreCase(spawnReason))
+            .findAny()
+            .orElse(null);
+    }
+
     @Synchronized("configLock")
-    public void setPlayerSpawnAllowed(boolean value) {
-        this.isPlayerSpawnAllowed = value;
+    public void setAlwaysAllow(String spawnType, boolean value) throws RuleException {
+        CreatureSpawnEvent.SpawnReason reason = MobControlWorldConfig.getSpawnReason(spawnType);
+        if (reason == null) {
+            throw new RuleException("Unknown spawn type '" + spawnType + "'!");
+        }
+
+        if (value) {
+            if (!this.alwaysAllowTypes.contains(reason)) {
+                this.alwaysAllowTypes.add(reason);
+            }
+        } else {
+            this.alwaysAllowTypes.remove(reason);
+        }
+
         ConfigStore.getInstance().notifyChanged();
     }
 }

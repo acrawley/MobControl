@@ -11,6 +11,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.World;
 
 import java.util.Locale;
+import java.util.stream.Collectors;
 
 public class MobControlSetCommand extends CommandBase {
     @Override
@@ -38,8 +39,8 @@ public class MobControlSetCommand extends CommandBase {
             String property = args[1].toLowerCase(Locale.ENGLISH);
             String[] propertyArgs = ArrayUtil.removeFirst(args, 2);
             switch (property) {
-                case "allowplayerspawn":
-                    return this.setAllowPlayerSpawn(world, propertyArgs);
+                case "alwaysallow":
+                    return this.setAlwaysAllow(world, propertyArgs);
 
                 case "rule":
                     return this.setRule(world, propertyArgs);
@@ -49,27 +50,29 @@ public class MobControlSetCommand extends CommandBase {
             return false;
         }
 
-        private boolean setAllowPlayerSpawn(World world, String[] args) {
-            if (args.length != 1) {
-                return false;
-            }
-
-            boolean value;
-            try {
-                value = Boolean.parseBoolean(args[0]);
-            } catch (NumberFormatException ex) {
-                this.error("Cannot parse '" + args[0] + "' as a boolean!");
+        private boolean setAlwaysAllow(World world, String[] args) {
+            if (args.length == 0) {
                 return false;
             }
 
             MobControlWorldConfig config = ConfigStore.getInstance().getWorldConfig(world.getName(), true);
-            config.setPlayerSpawnAllowed(value);
 
-            if (value) {
-                this.sendMessage("Player-spawned mobs are always allowed in world '" + world.getName() + "'!");
-            } else {
-                this.sendMessage("Player-spawned mobs are subject to normal rules in world '" + world.getName() + "'!");
+            for (String arg : args) {
+                char first = arg.charAt(0);
+                String reason = arg.substring(1).toUpperCase(Locale.ENGLISH);
+
+                try {
+                    config.setAlwaysAllow(reason, first == '+');
+                } catch (RuleException ex) {
+                    this.error("Error setting spawn type overrides: " + ex.getMessage());
+                }
             }
+
+            this.sendMessage("Spawn types always allowed in world '" + world.getName() + "': "
+                + config.getAlwaysAllowTypes().stream()
+                .map(r -> r.name())
+                .sorted()
+                .collect(Collectors.joining(", ")));
 
             return true;
         }

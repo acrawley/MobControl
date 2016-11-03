@@ -16,7 +16,7 @@ commands:
   mobcontrol set:
     description: Set properties regarding mobs
     usage: |
-      /mobcontrol set [world] allowplayerspawn [true | false] - Allow entities spawned by players, regardless of rules
+      /mobcontrol set [world] alwaysallow [+|-][reason] ... - Allow a certain kind of spawn, regardless of other rules
       /mobcontrol set [world] rule [rule] ... - Set rules controlling spawns
           Rule format: [+|-][mob name], e.g. -PIG_ZOMBIE.  Also supports groups: ALL, FRIENDLY, HOSTILE
   mobcontrol allow:

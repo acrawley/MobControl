@@ -95,7 +95,7 @@ public class ConfigStore extends ConfigurationFileBase {
 
         if (shouldCreate) {
             try {
-                MobControlWorldConfig newConfig = new MobControlWorldConfig("+ALL", true);
+                MobControlWorldConfig newConfig = new MobControlWorldConfig("+ALL", null);
                 this.worldConfigs.put(worldName, newConfig);
 
                 return newConfig;
