@@ -2,6 +2,7 @@ package net.andrewcr.minecraft.plugin.MobControl;
 
 import lombok.Getter;
 import net.andrewcr.minecraft.plugin.BasePluginLib.plugin.PluginBase;
+import net.andrewcr.minecraft.plugin.BasePluginLib.util.Version;
 import net.andrewcr.minecraft.plugin.MobControl.commands.*;
 import net.andrewcr.minecraft.plugin.MobControl.listeners.SpawnListener;
 import net.andrewcr.minecraft.plugin.MobControl.model.ConfigStore;
@@ -13,8 +14,12 @@ public class Plugin extends PluginBase {
     private ConfigStore configStore;
 
     @Override
-    public void onEnable() {
-        super.onEnable();
+    protected Version getRequiredBPLVersion() {
+        return new Version(1, 1);
+    }
+
+    @Override
+    public void onEnableCore() {
         Plugin.instance = this;
 
         this.configStore = new ConfigStore();
@@ -32,9 +37,7 @@ public class Plugin extends PluginBase {
     }
 
     @Override
-    public void onDisable() {
-        super.onDisable();
-
+    public void onDisableCore() {
         this.configStore.save();
 
         Plugin.instance = null;

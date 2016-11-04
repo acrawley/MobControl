@@ -2,6 +2,7 @@ name: MobControl
 main: net.andrewcr.minecraft.plugin.MobControl.Plugin
 version: 1.0
 authors: [ andrewcr ]
+depends: [ BasePluginLib ]
 
 commands:
   mobcontrol:
