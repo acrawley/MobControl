@@ -11,6 +11,9 @@ import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.EntityType;
 
+import java.util.Arrays;
+import java.util.stream.Collectors;
+
 abstract class MobControlSpawnCommandExecutor extends CommandExecutorBase {
     public MobControlSpawnCommandExecutor(String name) {
         super(name, Constants.ConfigurePermission);
@@ -42,11 +45,13 @@ abstract class MobControlSpawnCommandExecutor extends CommandExecutorBase {
             EntityType entityType = EntityUtil.tryGetEntityTypeByName(args[1]);
             if (entityType == null) {
                 this.error("Unknown entity type '" + args[1] + "'!");
+                this.showMobList();
                 return false;
             }
 
             if (!EntityUtil.isMob(entityType)) {
                 this.error("Entity '" + args[1] + "' is not a mob!");
+                this.showMobList();
                 return false;
             }
 
@@ -68,5 +73,12 @@ abstract class MobControlSpawnCommandExecutor extends CommandExecutorBase {
         }
 
         return true;
+    }
+
+    private void showMobList() {
+        this.error("Try one of: " + Arrays.stream(EntityType.values())
+            .filter(EntityUtil::isMob)
+            .map(Enum::name)
+            .collect(Collectors.joining(", ")));
     }
 }

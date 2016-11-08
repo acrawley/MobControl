@@ -19,6 +19,12 @@ public class MobSpawnRule {
         this.setRuleText(ruleText);
     }
 
+    public String getRuleText() {
+        return this.clauses.stream()
+            .map(RuleClause::toString)
+            .collect(Collectors.joining(" "));
+    }
+
     @Synchronized("configLock")
     public void setRuleText(String ruleText) throws RuleException {
         List<RuleClause> clauses = new ArrayList<>();
@@ -45,12 +51,6 @@ public class MobSpawnRule {
         ConfigStore.getInstance().notifyChanged();
     }
 
-    public String getRuleText() {
-        return this.clauses.stream()
-            .map(r -> r.toString())
-            .collect(Collectors.joining(" "));
-    }
-
     public boolean canSpawn(EntityType entityType) {
         boolean result = true;
 
@@ -58,7 +58,7 @@ public class MobSpawnRule {
         for (RuleClause clause : this.clauses) {
             Boolean ruleResult = clause.allowsSpawn(entityType);
             if (ruleResult != null) {
-                result = ruleResult.booleanValue();
+                result = ruleResult;
             }
         }
 

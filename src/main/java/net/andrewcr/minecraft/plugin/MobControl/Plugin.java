@@ -8,14 +8,12 @@ import net.andrewcr.minecraft.plugin.MobControl.listeners.SpawnListener;
 import net.andrewcr.minecraft.plugin.MobControl.model.ConfigStore;
 
 public class Plugin extends PluginBase {
-    @Getter
-    private static Plugin instance;
-    @Getter
-    private ConfigStore configStore;
+    @Getter private static Plugin instance;
+    @Getter private ConfigStore configStore;
 
     @Override
     protected Version getRequiredBPLVersion() {
-        return new Version(1, 1);
+        return new Version(1, 2);
     }
 
     @Override

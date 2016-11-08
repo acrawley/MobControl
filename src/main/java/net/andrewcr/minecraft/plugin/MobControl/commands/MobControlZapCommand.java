@@ -2,15 +2,20 @@ package net.andrewcr.minecraft.plugin.MobControl.commands;
 
 import net.andrewcr.minecraft.plugin.BasePluginLib.command.CommandBase;
 import net.andrewcr.minecraft.plugin.BasePluginLib.command.CommandExecutorBase;
+import net.andrewcr.minecraft.plugin.BasePluginLib.util.EntityUtil;
 import net.andrewcr.minecraft.plugin.BasePluginLib.util.StringUtil;
 import net.andrewcr.minecraft.plugin.MobControl.Constants;
+import net.andrewcr.minecraft.plugin.MobControl.model.rules.InvalidMobTypeException;
 import net.andrewcr.minecraft.plugin.MobControl.model.rules.RuleClause;
 import net.andrewcr.minecraft.plugin.MobControl.model.rules.RuleException;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 public class MobControlZapCommand extends CommandBase {
     @Override
@@ -39,6 +44,14 @@ public class MobControlZapCommand extends CommandBase {
                 clause = RuleClause.fromText("+" + args[0]);
             } catch (RuleException ex) {
                 this.error("Error: " + ex.getMessage());
+
+                if (ex instanceof InvalidMobTypeException) {
+                    this.error("Try one of: " + Arrays.stream(EntityType.values())
+                        .filter(EntityUtil::isMob)
+                        .map(Enum::name)
+                        .collect(Collectors.joining(", ")));
+                }
+
                 return false;
             }
 
@@ -53,15 +66,15 @@ public class MobControlZapCommand extends CommandBase {
             }
 
             Iterable<? extends Entity> entities;
-            if (radius == 0){
-                if (!this.getPlayer().hasPermission(Constants.ZapAllPermission)) {
+            if (radius == 0) {
+                if (!this.hasPermission(Constants.ZapAllPermission)) {
                     this.error("Error: You do not have permission to zap all entities in a world!");
                     return false;
                 }
 
                 entities = this.getPlayer().getWorld().getLivingEntities();
             } else {
-                if (!this.getPlayer().hasPermission(Constants.ZapRadiusPermission)) {
+                if (!this.hasPermission(Constants.ZapRadiusPermission)) {
                     this.error("Error: You do not have permission to zap entities!");
                     return false;
                 }
@@ -75,17 +88,17 @@ public class MobControlZapCommand extends CommandBase {
             ArrayList<Location> killedEntityLocations = new ArrayList<>();
 
             for (Entity entity : entities) {
-                if (radius != 0 && entity.getLocation().distanceSquared(playerLoc) > radius) {
-                    // Entity is out of range
-                    continue;
-                }
-
                 if (!(entity instanceof LivingEntity)) {
                     // Not a living entity
                     continue;
                 }
 
-                LivingEntity livingEntity = (LivingEntity)entity;
+                if (radius != 0 && entity.getLocation().distanceSquared(playerLoc) > radius) {
+                    // Entity is out of range
+                    continue;
+                }
+
+                LivingEntity livingEntity = (LivingEntity) entity;
 
                 Boolean match = clause.allowsSpawn(livingEntity.getType());
                 if (match == null || !match) {

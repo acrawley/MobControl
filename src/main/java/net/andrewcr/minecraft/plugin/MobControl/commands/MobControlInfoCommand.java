@@ -46,7 +46,7 @@ public class MobControlInfoCommand extends CommandBase {
             this.sendMessage("World '" + world.getName() + "' configuration:");
             if (config.getAlwaysAllowTypes().size() > 0) {
                 this.sendMessage("  Always allow spawns of type: " + config.getAlwaysAllowTypes().stream()
-                    .map(t -> t.name())
+                    .map(Enum::name)
                     .collect(Collectors.joining(", ")));
             }
             this.sendMessage("  Spawn rule: " + config.getSpawnRule().getRuleText());
@@ -59,7 +59,7 @@ public class MobControlInfoCommand extends CommandBase {
         private String getMobs(MobSpawnRule rule, boolean allowed) {
             return Arrays.stream(EntityType.values())
                 .filter(e -> EntityUtil.isMob(e) && rule.canSpawn(e) == allowed)
-                .map(e -> e.name())
+                .map(Enum::name)
                 .collect(Collectors.joining(", "));
         }
     }

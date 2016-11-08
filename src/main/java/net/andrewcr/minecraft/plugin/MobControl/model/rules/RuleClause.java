@@ -19,15 +19,6 @@ public class RuleClause implements Comparable<RuleClause> {
 
     //region Overrides
 
-    @Override
-    public String toString() {
-        return (this.action == ClauseAction.Allow ? "+" : "-") + this.name.toUpperCase(Locale.ENGLISH);
-    }
-
-    //endregion
-
-    //region Public API
-
     public static RuleClause fromText(String text) throws RuleException {
         if (text.length() < 2) {
             throw new RuleException("Invalid rule!");
@@ -52,25 +43,41 @@ public class RuleClause implements Comparable<RuleClause> {
 
         ClauseType type;
         ClauseGroupType groupType = ClauseGroupType.None;
-        if (mobClass.equals("ALL")) {
-            type = ClauseType.All;
-        } else if (mobClass.equals("FRIENDLY") || mobClass.equals("HOSTILE")) {
-            type = ClauseType.Group;
-            groupType = mobClass.equals("FRIENDLY") ? ClauseGroupType.FriendlyMobs : ClauseGroupType.HostileMobs;
-        } else {
-            EntityType entityType = EntityUtil.tryGetEntityTypeByName(mobClass);
-            if (entityType == null) {
-                throw new RuleException("Unknown mob type '" + mobClass + "'!");
-            }
+        switch (mobClass) {
+            case "ALL":
+                type = ClauseType.All;
+                break;
 
-            if (!EntityUtil.isMob(entityType)) {
-                throw new RuleException("Entity type '" + mobClass + "' is not a mob!");
-            }
+            case "FRIENDLY":
+            case "HOSTILE":
+                type = ClauseType.Group;
+                groupType = mobClass.equals("FRIENDLY") ? ClauseGroupType.FriendlyMobs : ClauseGroupType.HostileMobs;
+                break;
 
-            type = ClauseType.Single;
+            default:
+                EntityType entityType = EntityUtil.tryGetEntityTypeByName(mobClass);
+                if (entityType == null) {
+                    throw new InvalidMobTypeException("Unknown mob type '" + mobClass + "'!");
+                }
+
+                if (!EntityUtil.isMob(entityType)) {
+                    throw new InvalidMobTypeException("Entity type '" + mobClass + "' is not a mob!");
+                }
+
+                type = ClauseType.Single;
+                break;
         }
 
         return new RuleClause(mobClass, mode, type, groupType);
+    }
+
+    //endregion
+
+    //region Public API
+
+    @Override
+    public String toString() {
+        return (this.action == ClauseAction.Allow ? "+" : "-") + this.name.toUpperCase(Locale.ENGLISH);
     }
 
     public Boolean allowsSpawn(EntityType entityType) {

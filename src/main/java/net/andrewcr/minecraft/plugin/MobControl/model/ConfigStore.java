@@ -5,17 +5,17 @@ import net.andrewcr.minecraft.plugin.MobControl.Plugin;
 import net.andrewcr.minecraft.plugin.MobControl.model.rules.RuleException;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.configuration.serialization.ConfigurationSerialization;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
 public class ConfigStore extends ConfigurationFileBase {
     //region Private Fields
 
-    private Map<String, MobControlWorldConfig> worldConfigs;
+    private static final String CONFIGURATION_VERSION_KEY = "ConfigurationVersion";
+    private static final String SPAWN_CONFIGS_KEY = "SpawnConfigs";
+
+    private final Map<String, MobControlWorldConfig> worldConfigs;
 
     //endregion
 
@@ -25,8 +25,6 @@ public class ConfigStore extends ConfigurationFileBase {
         super(Plugin.getInstance());
 
         this.worldConfigs = new HashMap<>();
-
-        ConfigurationSerialization.registerClass(MobControlWorldConfig.class);
     }
 
     //endregion
@@ -41,47 +39,46 @@ public class ConfigStore extends ConfigurationFileBase {
 
     //region Serialization
 
+
     @Override
-    protected void loadCore() {
-        File configFile = new File(Plugin.getInstance().getDataFolder(), "config.yml");
-        if (configFile.exists()) {
-            YamlConfiguration config = YamlConfiguration.loadConfiguration(configFile);
-            String version = config.getString("ConfigurationVersion");
+    protected String getFileName() {
+        return "config.yml";
+    }
 
-            switch (version) {
-                case "1.0":
-                    this.loadV1_0Config(config);
-                    return;
+    @Override
+    protected void loadCore(YamlConfiguration configuration) {
+        String version = configuration.getString(CONFIGURATION_VERSION_KEY);
+        switch (version) {
+            case "1.0":
+                this.loadV1_0Config(configuration);
+                return;
 
-                default:
-                    Plugin.getInstance().getLogger().severe("Unknown MobControl configuration version '" + version + "'!");
-            }
+            default:
+                Plugin.getInstance().getLogger().severe("Unknown MobControl configuration version '" + version + "'!");
         }
     }
 
     private void loadV1_0Config(YamlConfiguration config) {
-        ConfigurationSection configs = config.getConfigurationSection("spawnConfigs");
-        if (configs != null) {
-            for (String world : configs.getKeys(false)) {
-                this.worldConfigs.put(world, (MobControlWorldConfig) configs.get(world));
+        ConfigurationSection spawnConfigs = config.getConfigurationSection(SPAWN_CONFIGS_KEY);
+        if (spawnConfigs != null) {
+            for (String world : spawnConfigs.getKeys(false)) {
+                this.worldConfigs.put(world, MobControlWorldConfig.loadFrom(spawnConfigs.getConfigurationSection(world)));
             }
         }
+
+        Plugin.getInstance().getLogger().info("Loaded mob control rules for " + this.worldConfigs.size() + " world(s)!");
     }
 
     @Override
-    protected void saveCore() {
-        File portalFile = new File(Plugin.getInstance().getDataFolder(), "config.yml");
+    protected void saveCore(YamlConfiguration configuration) {
+        configuration.set(CONFIGURATION_VERSION_KEY, "1.0");
 
-        YamlConfiguration config = new YamlConfiguration();
-        config.set("ConfigurationVersion", "1.0");
-
-        config.set("spawnConfigs", this.worldConfigs);
-
-        try {
-            config.save(portalFile);
-        } catch (IOException e) {
-            Plugin.getInstance().getLogger().severe("Failed to save MobControl configuration: " + e.toString());
+        ConfigurationSection spawnConfigs = configuration.createSection(SPAWN_CONFIGS_KEY);
+        for (MobControlWorldConfig worldConfig : this.worldConfigs.values()) {
+            worldConfig.save(spawnConfigs);
         }
+
+        Plugin.getInstance().getLogger().info("Saved mob control rules for " + this.worldConfigs.size() + " world(s)!");
     }
 
     //endregion
@@ -95,8 +92,10 @@ public class ConfigStore extends ConfigurationFileBase {
 
         if (shouldCreate) {
             try {
-                MobControlWorldConfig newConfig = new MobControlWorldConfig("+ALL", null);
+                MobControlWorldConfig newConfig = new MobControlWorldConfig(worldName);
                 this.worldConfigs.put(worldName, newConfig);
+
+                this.notifyChanged();
 
                 return newConfig;
             } catch (RuleException ex) {

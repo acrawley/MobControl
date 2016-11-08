@@ -6,10 +6,13 @@ import net.andrewcr.minecraft.plugin.BasePluginLib.util.ArrayUtil;
 import net.andrewcr.minecraft.plugin.MobControl.Constants;
 import net.andrewcr.minecraft.plugin.MobControl.model.ConfigStore;
 import net.andrewcr.minecraft.plugin.MobControl.model.MobControlWorldConfig;
+import net.andrewcr.minecraft.plugin.MobControl.model.rules.InvalidSpawnTypeException;
 import net.andrewcr.minecraft.plugin.MobControl.model.rules.RuleException;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
+import org.bukkit.event.entity.CreatureSpawnEvent;
 
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
@@ -65,12 +68,20 @@ public class MobControlSetCommand extends CommandBase {
                     config.setAlwaysAllow(reason, first == '+');
                 } catch (RuleException ex) {
                     this.error("Error setting spawn type overrides: " + ex.getMessage());
+
+                    if (ex instanceof InvalidSpawnTypeException) {
+                        this.error("Try one of: " + Arrays.stream(CreatureSpawnEvent.SpawnReason.values())
+                            .map(Enum::name)
+                            .collect(Collectors.joining(", ")));
+                    }
+
+                    return false;
                 }
             }
 
             this.sendMessage("Spawn types always allowed in world '" + world.getName() + "': "
                 + config.getAlwaysAllowTypes().stream()
-                .map(r -> r.name())
+                .map(Enum::name)
                 .sorted()
                 .collect(Collectors.joining(", ")));
 
@@ -82,14 +93,14 @@ public class MobControlSetCommand extends CommandBase {
                 return false;
             }
 
-            String rule = String.join(" ", args);
+            String rule = String.join(" ", (CharSequence[]) args);
 
             MobControlWorldConfig config = ConfigStore.getInstance().getWorldConfig(world.getName(), true);
 
             try {
                 config.getSpawnRule().setRuleText(rule);
             } catch (RuleException ex) {
-                this.error(ex.getMessage());
+                this.error("Error setting rule: " + ex.getMessage());
                 return false;
             }
 

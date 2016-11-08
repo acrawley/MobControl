@@ -3,31 +3,40 @@ package net.andrewcr.minecraft.plugin.MobControl.model;
 import lombok.Getter;
 import lombok.Synchronized;
 import net.andrewcr.minecraft.plugin.MobControl.Plugin;
+import net.andrewcr.minecraft.plugin.MobControl.model.rules.InvalidSpawnTypeException;
 import net.andrewcr.minecraft.plugin.MobControl.model.rules.MobSpawnRule;
 import net.andrewcr.minecraft.plugin.MobControl.model.rules.RuleException;
-import org.bukkit.configuration.serialization.ConfigurationSerializable;
-import org.bukkit.configuration.serialization.SerializableAs;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Collectors;
 
-@SerializableAs("MobControlWorldConfig")
-public class MobControlWorldConfig implements ConfigurationSerializable {
+public class MobControlWorldConfig {
     //region Private Fields
+
+    private static final String ALWAYS_ALLOW_KEY = "AlwaysAllow";
+    private static final String RULE_KEY = "Rule";
 
     private final Object configLock = ConfigStore.getInstance().getSyncObj();
 
-    @Getter
-    private List<CreatureSpawnEvent.SpawnReason> alwaysAllowTypes;
-    @Getter
-    private MobSpawnRule spawnRule;
+    @Getter private List<CreatureSpawnEvent.SpawnReason> alwaysAllowTypes;
+    @Getter private MobSpawnRule spawnRule;
+    private final String worldName;
 
     //endregion
 
     //region Constructor
 
-    public MobControlWorldConfig(String spawnRule, List<CreatureSpawnEvent.SpawnReason> alwaysAllowTypes) throws RuleException {
+    MobControlWorldConfig(String worldName) throws RuleException {
+        this(worldName, "+ALL", null);
+    }
+
+    private MobControlWorldConfig(String worldName, String spawnRule, List<CreatureSpawnEvent.SpawnReason> alwaysAllowTypes) throws RuleException {
+        this.worldName = worldName;
+
         if (alwaysAllowTypes != null) {
             this.alwaysAllowTypes = alwaysAllowTypes;
         } else {
@@ -41,33 +50,16 @@ public class MobControlWorldConfig implements ConfigurationSerializable {
 
     //region Serialization
 
-    @Override
-    @Synchronized("configLock")
-    public Map<String, Object> serialize() {
-        Map<String, Object> map = new LinkedHashMap<>();
-
-        if (this.alwaysAllowTypes.size() > 0) {
-            map.put("alwaysAllow", this.alwaysAllowTypes.stream()
-                .map(t -> t.name())
-                .sorted()
-                .collect(Collectors.joining(", ")));
-        }
-
-        map.put("rule", this.spawnRule.getRuleText());
-
-        return map;
-    }
-
-    public static MobControlWorldConfig deserialize(Map<String, Object> data) {
+    public static MobControlWorldConfig loadFrom(ConfigurationSection spawnConfig) {
         String spawnRule = null;
         List<CreatureSpawnEvent.SpawnReason> alwaysAllowTypes = null;
 
-        if (data.containsKey("rule")) {
-            spawnRule = (String) data.get("rule");
+        if (spawnConfig.contains(RULE_KEY)) {
+            spawnRule = spawnConfig.getString(RULE_KEY);
         }
 
-        if (data.containsKey("alwaysAllow")) {
-            String alwaysAllowRaw = (String) data.get("alwaysAllow");
+        if (spawnConfig.contains(ALWAYS_ALLOW_KEY)) {
+            String alwaysAllowRaw = spawnConfig.getString(ALWAYS_ALLOW_KEY);
             alwaysAllowTypes = Arrays.stream(alwaysAllowRaw.split(","))
                 .map(type -> MobControlWorldConfig.getSpawnReason(type.trim()))
                 .filter(r -> r != null)
@@ -75,7 +67,7 @@ public class MobControlWorldConfig implements ConfigurationSerializable {
         }
 
         try {
-            return new MobControlWorldConfig(spawnRule, alwaysAllowTypes);
+            return new MobControlWorldConfig(spawnConfig.getName(), spawnRule, alwaysAllowTypes);
         } catch (RuleException ex) {
             Plugin.getInstance().getLogger().severe("Failed to parse spawn rule '" + spawnRule + "'!");
             Plugin.getInstance().getLogger().severe("    Error: " + ex.getMessage());
@@ -84,20 +76,26 @@ public class MobControlWorldConfig implements ConfigurationSerializable {
         return null;
     }
 
-    //endregion
+    public void save(ConfigurationSection spawnConfigs) {
+        ConfigurationSection spawnConfig = spawnConfigs.createSection(this.worldName);
 
-    private static CreatureSpawnEvent.SpawnReason getSpawnReason(String spawnReason) {
-        return Arrays.stream(CreatureSpawnEvent.SpawnReason.values())
-            .filter(e -> e.name().equalsIgnoreCase(spawnReason))
-            .findAny()
-            .orElse(null);
+        if (this.alwaysAllowTypes.size() > 0) {
+            spawnConfig.set(ALWAYS_ALLOW_KEY, this.alwaysAllowTypes.stream()
+                .map(Enum::name)
+                .sorted()
+                .collect(Collectors.joining(", ")));
+        }
+
+        spawnConfig.set(RULE_KEY, this.spawnRule.getRuleText());
     }
+
+    //endregion
 
     @Synchronized("configLock")
     public void setAlwaysAllow(String spawnType, boolean value) throws RuleException {
         CreatureSpawnEvent.SpawnReason reason = MobControlWorldConfig.getSpawnReason(spawnType);
         if (reason == null) {
-            throw new RuleException("Unknown spawn type '" + spawnType + "'!");
+            throw new InvalidSpawnTypeException("Unknown spawn type '" + spawnType + "'!");
         }
 
         if (value) {
@@ -109,5 +107,12 @@ public class MobControlWorldConfig implements ConfigurationSerializable {
         }
 
         ConfigStore.getInstance().notifyChanged();
+    }
+
+    private static CreatureSpawnEvent.SpawnReason getSpawnReason(String spawnReason) {
+        return Arrays.stream(CreatureSpawnEvent.SpawnReason.values())
+            .filter(e -> e.name().equalsIgnoreCase(spawnReason))
+            .findAny()
+            .orElse(null);
     }
 }
